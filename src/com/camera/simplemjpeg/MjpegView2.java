@@ -48,14 +48,7 @@ public class MjpegView2 extends SurfaceView implements SurfaceHolder.Callback {
 		}
 	}
 	
-	static String diagonal(Bitmap b){
-		String result = "";
-		int m = Math.min(b.getWidth()-1,b.getHeight()-1);
-		for(int i =0; i<m; i++){
-			result+= "\n\t"+String.format("#%06X", (0xFFFFFF & b.getPixel(i, i)));
-		}
-		return result;
-	}
+
 	
 
     public MjpegView2(Context context, AttributeSet attrs) { 

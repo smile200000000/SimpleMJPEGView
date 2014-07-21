@@ -25,7 +25,7 @@ public class MjpegActivity extends Activity {
 	private static final boolean DEBUG=false;
     private static final String TAG = "MJPEG";
 
-    private MjpegView2 mv = null;
+    private MjpegView mv = null;
     String URL;
     
     // for settings (network and resolution)
@@ -78,9 +78,9 @@ public class MjpegActivity extends Activity {
         URL = new String(sb);
 
         setContentView(R.layout.main);
-        mv = (MjpegView2) findViewById(R.id.mv);  
+        mv = (MjpegView) findViewById(R.id.mv);  
         if(mv != null){
-        	mv.setResolution(width, height);
+//        	mv.setResolution(width, height);
         }
         
         setTitle(R.string.title_connecting);
@@ -169,7 +169,7 @@ public class MjpegActivity extends Activity {
     				ip_command = data.getStringExtra("ip_command");
 
     				if(mv!=null){
-    					mv.setResolution(width, height);
+//    					mv.setResolution(width, height);
     				}
     				SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
     				SharedPreferences.Editor editor = preferences.edit();
@@ -234,7 +234,7 @@ public class MjpegActivity extends Activity {
         }
 
         protected void onPostExecute(MjpegInputStream result) {
-            mv.setMjpegInputStream(result);
+            mv.setSource(result);
             if(result!=null){
             	result.setSkip(1);
             	setTitle(R.string.app_name);
