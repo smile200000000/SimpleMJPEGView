@@ -9,14 +9,6 @@ import java.io.InputStream;
 
 import java.util.Properties;
 
-/*
-import java.net.URI;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-*/
-
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -26,22 +18,22 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
 public class MjpegInputStream extends DataInputStream {
+	private static final String TAG = MjpegInputStream.class.getSimpleName();
+	private static final boolean DEBUG = false;
+	
     private final byte[] SOI_MARKER = { (byte) 0xFF, (byte) 0xD8 };
     private final byte[] EOF_MARKER = { (byte) 0xFF, (byte) 0xD9 };
     private final String CONTENT_LENGTH = "Content-Length";
     private final static int HEADER_MAX_LENGTH = 100;
     private final static int FRAME_MAX_LENGTH = 200000;
+    
     private int mContentLength = -1;
-    byte[] header =null;
-    byte[] frameData =null;
+    byte[] header = null;
+    byte[] frameData = null;
     int headerLen = -1;
     int headerLenPrev = -1;
-    
-    int skip=1;
-    int count=0;
-    
-    private static final String TAG=MjpegInputStream.class.getSimpleName();
-    private static final boolean DEBUG=false;
+    int skip = 1;
+    int count = 0;
     
 	
     public MjpegInputStream(InputStream in) {
@@ -49,7 +41,6 @@ public class MjpegInputStream extends DataInputStream {
     }
     
     private int getEndOfSeqeunce(DataInputStream in, byte[] sequence) throws IOException {
-
         int seqIndex = 0;
         byte c;
         for(int i=0; i < FRAME_MAX_LENGTH; i++) {
@@ -63,7 +54,6 @@ public class MjpegInputStream extends DataInputStream {
             } else seqIndex = 0;
         }
         
-
         return -1;
     }
 	
@@ -78,7 +68,6 @@ public class MjpegInputStream extends DataInputStream {
     		 
     		skipBytes(headerLen+startPos);
     		 
-    		
             int seqIndex = 0;
             byte c;
             for(int i=0; i < endPos-startPos ; i++) {
@@ -91,7 +80,6 @@ public class MjpegInputStream extends DataInputStream {
                     }
                 } else seqIndex = 0;
             }
-            
 
             return -1;
 	}
@@ -102,7 +90,7 @@ public class MjpegInputStream extends DataInputStream {
         Properties props = new Properties();
         props.load(headerIn);
         return Integer.parseInt(props.getProperty(CONTENT_LENGTH));
-    }	
+    }
     
     public Bitmap readMjpegFrame() throws IOException {
         mark(FRAME_MAX_LENGTH);
@@ -167,10 +155,10 @@ public class MjpegInputStream extends DataInputStream {
         Bitmap bmp;
         if(count++%skip==0){
         	try{
-        		Log.v(TAG, bytesToHex(frameData).substring(0, 20));
+//        		Log.v(TAG, bytesToHex(frameData).substring(0, 20));
         		bmp = BitmapFactory.decodeByteArray(frameData, 0, mContentLength);
-        		Log.v(TAG, "w:"+bmp.getWidth()+"h:"+bmp.getHeight());
-        		Log.v(TAG, "first pix color: "+ String.format("#%06X", (0xFFFFFF & bmp.getPixel(0, 0))));
+//        		Log.v(TAG, "w:"+bmp.getWidth()+"h:"+bmp.getHeight());
+//        		Log.v(TAG, "first pix color: "+ String.format("#%06X", (0xFFFFFF & bmp.getPixel(0, 0))));
         	}catch(Exception e){
         		Log.e(TAG, "", e);
         		return null;

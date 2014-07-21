@@ -16,13 +16,12 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
-	
     
-    SurfaceHolder holder;
-    
+    private SurfaceHolder holder;
     private MjpegViewThread thread;
     private MjpegInputStream mIn = null;    
 //    private boolean showFps = false;
+    
     private boolean mRun = false;
     private boolean surfaceDone = false;    
 
@@ -30,9 +29,16 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 //    private int overlayTextColor;
 //    private int overlayBackgroundColor;
 //    private int ovlPos;
-//    private int dispWidth;
-//    private int dispHeight;
-//    private int displayMode;
+    
+    public static final int SIZE_CENTER = 1;
+    public static final int SIZE_BEST_FIT = 4;
+    public static final int SIZE_FULLSCREEN = 8;
+
+    private int width = -1;
+    private int height = -1;
+    private int displayMode = SIZE_CENTER;
+    
+    
 
 	private boolean suspending = false;
 
@@ -44,40 +50,9 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 
          
         public MjpegViewThread(SurfaceHolder surfaceHolder) { 
-        	mHolder = surfaceHolder; 
+        	mHolder = surfaceHolder;
         }
-
-//        private Rect destRect(int bmw, int bmh) {
-//            int tempx;
-//            int tempy;
-//            if (displayMode == MjpegView.SIZE_STANDARD) {
-//                tempx = (dispWidth / 2) - (bmw / 2);
-//                tempy = (dispHeight / 2) - (bmh / 2);
-//                return new Rect(tempx, tempy, bmw + tempx, bmh + tempy);
-//            }
-//            if (displayMode == MjpegView.SIZE_BEST_FIT) {
-//                float bmasp = (float) bmw / (float) bmh;
-//                bmw = dispWidth;
-//                bmh = (int) (dispWidth / bmasp);
-//                if (bmh > dispHeight) {
-//                    bmh = dispHeight;
-//                    bmw = (int) (dispHeight * bmasp);
-//                }
-//                tempx = (dispWidth / 2) - (bmw / 2);
-//                tempy = (dispHeight / 2) - (bmh / 2);
-//                return new Rect(tempx, tempy, bmw + tempx, bmh + tempy);
-//            }
-//            if (displayMode == MjpegView.SIZE_FULLSCREEN)
-//                return new Rect(0, 0, dispWidth, dispHeight);
-//            return null;
-//        }
-         
-//        public void setSurfaceSize(int width, int height) {
-//            synchronized(mHolder) {
-//                dispWidth = width;
-//                dispHeight = height;
-//            }
-//        }
+        
          
 //        private Bitmap makeFpsOverlay(Paint p) {
 //            Rect b = new Rect();
@@ -112,7 +87,7 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 //    	    			Bitmap bmp = BitmapFactory.decodeResource(getResources(), R.raw.a); //testing
 		    		c = mHolder.lockCanvas();
 		    		if(c==null) throw new IOException();
-		    		c.drawBitmap(bmp, new Rect(0,0,bmp.getWidth(),bmp.getHeight()), new Rect(0,0,bmp.getWidth(),bmp.getHeight()), null);
+		    		c.drawBitmap(bmp, null, outputRect(displayMode, bmp.getWidth(), bmp.getHeight()), null);
 	    		}catch(IOException e){
 	    			mRun = false;
 	    		}finally{
@@ -185,21 +160,13 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
         }
 
     }
-
-//    public void freeCameraMemory(){
-//    	if(mIn!=null){
-//    		mIn.freeCameraMemory();
-//    	}
-//    }
     
     public MjpegView(Context context, AttributeSet attrs) { 
         super(context, attrs); init(context); 
     }
 
     public void surfaceChanged(SurfaceHolder holder, int f, int w, int h) {
-//    	if(thread!=null){
-//    		thread.setSurfaceSize(w, h); 
-//    	}
+    	setResolution(w, h); //TODO
     }
 
     public void surfaceDestroyed(SurfaceHolder holder) { 
@@ -224,14 +191,65 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 //    public void setOverlayPosition(int p) { ovlPos = p; }
 //    public void setDisplayMode(int s) { displayMode = s; }
     
-//    public void setResolution(int w, int h){
-//    	IMG_WIDTH = w;
-//    	IMG_HEIGHT = h;
-//    }
     
 	public boolean isStreaming(){
 		return mRun;
+	}	
+	public void setDisplayMode(int mode){
+		displayMode = mode;
 	}
+
+	/*
+	 * The actual surface is as big as the View (based on the layout and screen size).
+	 * These dimensions can be captured with getWidth() and getHeight() (these are marked as final).
+	 * If we want to alter the area we actually use for drawing, use these methods.
+	 * By default, we use the whole surface.
+	 */
+	public int getDrawableWidth(){
+		if(width==-1) width = super.getWidth();
+		return width;
+	}
+	public int getDrawableHeight(){
+		if(height==-1) height = super.getHeight();
+		return height;
+	}
+	public void setResolution(int width, int height){
+		this.width = Math.min(width, getWidth());
+		this.height = Math.min(height, getHeight());
+	}
+	
+	/*
+	 * For scaling the output image
+	 */
+    Rect outputRect(int displayMode, int bitmapWidth, int bitmapHeight){
+        int tempx;
+        int tempy;
+        int dispWidth = getDrawableWidth();
+        int dispHeight = getDrawableHeight();
+        switch(displayMode){
+	          case SIZE_CENTER:
+	              tempx = (dispWidth / 2) - (bitmapWidth / 2);
+	              tempy = (dispHeight / 2) - (bitmapHeight / 2);
+	              return new Rect(tempx, tempy, bitmapWidth + tempx, bitmapHeight + tempy);
+
+	          case SIZE_BEST_FIT:
+	              float bmasp = (float) bitmapWidth / (float) bitmapHeight;
+	              bitmapWidth = dispWidth;
+	              bitmapHeight = (int) (dispWidth / bmasp);
+	              if (bitmapHeight > dispHeight) {
+	            	  bitmapHeight = dispHeight;
+	                  bitmapWidth = (int) (dispHeight * bmasp);
+	              }
+	              tempx = (dispWidth / 2) - (bitmapWidth / 2);
+	              tempy = (dispHeight / 2) - (bitmapHeight / 2);
+	              return new Rect(tempx, tempy, bitmapWidth + tempx, bitmapHeight + tempy);
+	
+	          case SIZE_FULLSCREEN:
+	              return new Rect(0, 0, dispWidth, dispHeight);
+	          default:
+	        	  return null;
+        }
+      }
 	
 	
 	//debugging

@@ -80,7 +80,7 @@ public class MjpegActivity extends Activity {
         setContentView(R.layout.main);
         mv = (MjpegView) findViewById(R.id.mv);  
         if(mv != null){
-//        	mv.setResolution(width, height);
+        	mv.setResolution(width, height);
         }
         
         setTitle(R.string.title_connecting);
@@ -114,20 +114,7 @@ public class MjpegActivity extends Activity {
         	}
         }
     }
-    public void onStop() {
-    	if(DEBUG) Log.d(TAG,"onStop()");
-        super.onStop();
-    }
 
-    public void onDestroy() {
-    	if(DEBUG) Log.d(TAG,"onDestroy()");
-    	
-    	if(mv!=null){
-//    		mv.freeCameraMemory();
-    	}
-    	
-        super.onDestroy();
-    }
     
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -169,7 +156,7 @@ public class MjpegActivity extends Activity {
     				ip_command = data.getStringExtra("ip_command");
 
     				if(mv!=null){
-//    					mv.setResolution(width, height);
+    					mv.setResolution(width, height);
     				}
     				SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
     				SharedPreferences.Editor editor = preferences.edit();
@@ -235,6 +222,7 @@ public class MjpegActivity extends Activity {
 
         protected void onPostExecute(MjpegInputStream result) {
             mv.setSource(result);
+            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
             if(result!=null){
             	result.setSkip(1);
             	setTitle(R.string.app_name);
