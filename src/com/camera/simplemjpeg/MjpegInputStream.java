@@ -44,21 +44,16 @@ public class MjpegInputStream extends DataInputStream {
     private static final String TAG="MJPEG";
     private static final boolean DEBUG=false;
     
-    static {
-    	System.loadLibrary("ImageProc");
-    }
-    public native int pixeltobmp(byte[] jp, int l, Bitmap bmp);
-    public native void freeCameraMemory();
 	
-    public static MjpegInputStream read(String surl) {
-    	try {
-    		URL url = new URL(surl);
-    		HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-    		return new MjpegInputStream(urlConnection.getInputStream());
-    	}catch(Exception e){}
-    	
-        return null;
-    }
+//    public static MjpegInputStream read(String surl) {
+//    	try {
+//    		URL url = new URL(surl);
+//    		HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+//    		return new MjpegInputStream(urlConnection.getInputStream());
+//    	}catch(Exception e){}
+//    	
+//        return null;
+//    }
 	
     public MjpegInputStream(InputStream in) {
         super(new BufferedInputStream(in, FRAME_MAX_LENGTH));
@@ -127,6 +122,73 @@ public class MjpegInputStream extends DataInputStream {
         return Integer.parseInt(props.getProperty(CONTENT_LENGTH));
     }	
 
+//    public Bitmap readMjpegFrame() throws IOException {
+//        mark(FRAME_MAX_LENGTH);
+//        int headerLen;
+//        try{
+//        	headerLen = getStartOfSequence(this, SOI_MARKER);
+//        }catch(IOException e){
+//        	if(DEBUG) Log.d(TAG,"IOException in betting headerLen.");
+//        	reset();
+//        	return null;
+//        }
+//        reset();
+//
+//        if(header==null || headerLen != headerLenPrev){
+//        	header = new byte[headerLen];
+//        	if(DEBUG) Log.d(TAG,"header renewed "+headerLenPrev+" -> "+headerLen);
+//        }
+//        headerLenPrev = headerLen;
+//        readFully(header);
+//
+//        int ContentLengthNew = -1;
+//        try {
+//            ContentLengthNew = parseContentLength(header);
+//        } catch (NumberFormatException nfe) { 
+//        	ContentLengthNew = getEndOfSeqeunceSimplified(this, EOF_MARKER); 
+//        	
+//        	if(ContentLengthNew < 0){
+//        		if(DEBUG) Log.d(TAG,"Worst case for finding EOF_MARKER");
+//        		reset();
+//        		ContentLengthNew = getEndOfSeqeunce(this, EOF_MARKER); 
+//        	}
+//        }catch (IllegalArgumentException e) { 
+//        	if(DEBUG) Log.d(TAG,"IllegalArgumentException in parseContentLength");
+//        	ContentLengthNew = getEndOfSeqeunceSimplified(this, EOF_MARKER); 
+//        	
+//        	if(ContentLengthNew < 0){
+//        		if(DEBUG) Log.d(TAG,"Worst case for finding EOF_MARKER");
+//        		reset();
+//        		ContentLengthNew = getEndOfSeqeunce(this, EOF_MARKER); 
+//        	}
+//        }catch (IOException e) { 
+//        	if(DEBUG) Log.d(TAG,"IOException in parseContentLength");
+//        	reset();
+//        	return null;
+//        }
+//        mContentLength = ContentLengthNew;
+//        reset();
+//        
+//        if(frameData==null){
+//        	frameData = new byte[FRAME_MAX_LENGTH];
+//        	if(DEBUG) Log.d(TAG,"frameData newed cl="+FRAME_MAX_LENGTH);
+//        }
+//        if(mContentLength + HEADER_MAX_LENGTH > FRAME_MAX_LENGTH){
+//        	frameData = new byte[mContentLength + HEADER_MAX_LENGTH];
+//        	if(DEBUG) Log.d(TAG,"frameData renewed cl="+(mContentLength + HEADER_MAX_LENGTH));
+//        }
+//        
+//        skipBytes(headerLen);
+//
+//        readFully(frameData, 0, mContentLength);
+//
+//        if(count++%skip==0){
+//        	return BitmapFactory.decodeStream(new ByteArrayInputStream(frameData,0,mContentLength));
+//        }else{
+//        	return null;
+//        }
+//    }
+    
     public Bitmap readMjpegFrame() throws IOException {
         mark(FRAME_MAX_LENGTH);
         int headerLen;
@@ -187,80 +249,34 @@ public class MjpegInputStream extends DataInputStream {
 
         readFully(frameData, 0, mContentLength);
 
+        Bitmap bmp;
         if(count++%skip==0){
-        	return BitmapFactory.decodeStream(new ByteArrayInputStream(frameData,0,mContentLength));
+        	try{
+        		Log.v(TAG, bytesToHex(frameData).substring(0, 20));
+        		bmp = BitmapFactory.decodeByteArray(frameData, 0, mContentLength);
+        		Log.v(TAG, "w:"+bmp.getWidth()+"h:"+bmp.getHeight());
+        		Log.v(TAG, "first pix color: "+ String.format("#%06X", (0xFFFFFF & bmp.getPixel(0, 0))));
+        	}catch(Exception e){
+        		Log.e(TAG, "", e);
+        		return null;
+        	}
+        	return bmp;
         }else{
         	return null;
         }
     }
-    
-    public int readMjpegFrame(Bitmap bmp) throws IOException {
-        mark(FRAME_MAX_LENGTH);
-        int headerLen;
-        try{
-        	headerLen = getStartOfSequence(this, SOI_MARKER);
-        }catch(IOException e){
-        	if(DEBUG) Log.d(TAG,"IOException in betting headerLen.");
-        	reset();
-        	return -1;
-        }
-        reset();
-
-        if(header==null || headerLen != headerLenPrev){
-        	header = new byte[headerLen];
-        	if(DEBUG) Log.d(TAG,"header renewed "+headerLenPrev+" -> "+headerLen);
-        }
-        headerLenPrev = headerLen;
-        readFully(header);
-
-        int ContentLengthNew = -1;
-        try {
-            ContentLengthNew = parseContentLength(header);
-        } catch (NumberFormatException nfe) { 
-        	ContentLengthNew = getEndOfSeqeunceSimplified(this, EOF_MARKER); 
-        	
-        	if(ContentLengthNew < 0){
-        		if(DEBUG) Log.d(TAG,"Worst case for finding EOF_MARKER");
-        		reset();
-        		ContentLengthNew = getEndOfSeqeunce(this, EOF_MARKER); 
-        	}
-        }catch (IllegalArgumentException e) { 
-        	if(DEBUG) Log.d(TAG,"IllegalArgumentException in parseContentLength");
-        	ContentLengthNew = getEndOfSeqeunceSimplified(this, EOF_MARKER); 
-        	
-        	if(ContentLengthNew < 0){
-        		if(DEBUG) Log.d(TAG,"Worst case for finding EOF_MARKER");
-        		reset();
-        		ContentLengthNew = getEndOfSeqeunce(this, EOF_MARKER); 
-        	}
-        }catch (IOException e) { 
-        	if(DEBUG) Log.d(TAG,"IOException in parseContentLength");
-        	reset();
-        	return -1;
-        }
-        mContentLength = ContentLengthNew;
-        reset();
-        
-        if(frameData==null){
-        	frameData = new byte[FRAME_MAX_LENGTH];
-        	if(DEBUG) Log.d(TAG,"frameData newed cl="+FRAME_MAX_LENGTH);
-        }
-        if(mContentLength + HEADER_MAX_LENGTH > FRAME_MAX_LENGTH){
-        	frameData = new byte[mContentLength + HEADER_MAX_LENGTH];
-        	if(DEBUG) Log.d(TAG,"frameData renewed cl="+(mContentLength + HEADER_MAX_LENGTH));
-        }
-        
-        skipBytes(headerLen);
-
-        readFully(frameData, 0, mContentLength);
-
-        if(count++%skip==0){
-        	return pixeltobmp(frameData, mContentLength, bmp);
-        }else{
-        	return 0;
-        }
-    }
     public void setSkip(int s){
     	skip = s;
+    }
+    
+    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 }

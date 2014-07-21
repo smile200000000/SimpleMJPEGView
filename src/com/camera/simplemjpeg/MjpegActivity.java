@@ -25,7 +25,7 @@ public class MjpegActivity extends Activity {
 	private static final boolean DEBUG=false;
     private static final String TAG = "MJPEG";
 
-    private MjpegView mv = null;
+    private MjpegView2 mv = null;
     String URL;
     
     // for settings (network and resolution)
@@ -78,7 +78,7 @@ public class MjpegActivity extends Activity {
         URL = new String(sb);
 
         setContentView(R.layout.main);
-        mv = (MjpegView) findViewById(R.id.mv);  
+        mv = (MjpegView2) findViewById(R.id.mv);  
         if(mv != null){
         	mv.setResolution(width, height);
         }
@@ -123,7 +123,7 @@ public class MjpegActivity extends Activity {
     	if(DEBUG) Log.d(TAG,"onDestroy()");
     	
     	if(mv!=null){
-    		mv.freeCameraMemory();
+//    		mv.freeCameraMemory();
     	}
     	
         super.onDestroy();
@@ -234,15 +234,15 @@ public class MjpegActivity extends Activity {
         }
 
         protected void onPostExecute(MjpegInputStream result) {
-            mv.setSource(result);
+            mv.setMjpegInputStream(result);
             if(result!=null){
             	result.setSkip(1);
             	setTitle(R.string.app_name);
             }else{
             	setTitle(R.string.title_disconnected);
             }
-            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
-            mv.showFps(false);
+//            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
+//            mv.showFps(false);
         }
     }
     
