@@ -222,15 +222,14 @@ public class MjpegActivity extends Activity {
 
         protected void onPostExecute(MjpegInputStream result) {
             mv.setSource(result);
-            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
             if(result!=null){
             	result.setSkip(1);
             	setTitle(R.string.app_name);
             }else{
             	setTitle(R.string.title_disconnected);
             }
-//            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
-//            mv.showFps(false);
+            mv.setDisplayMode(MjpegView.SIZE_BEST_FIT);
+            mv.showFps(true);
         }
     }
     

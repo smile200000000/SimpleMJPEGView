@@ -20,63 +20,96 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
     private SurfaceHolder holder;
     private MjpegViewThread thread;
     private MjpegInputStream mIn = null;    
-//    private boolean showFps = false;
+    private boolean showFps = false;
     
     private boolean mRun = false;
     private boolean surfaceDone = false;    
-
-//    private Paint overlayPaint;
-//    private int overlayTextColor;
-//    private int overlayBackgroundColor;
-//    private int ovlPos;
+    private Paint overlayPaint = new Paint();
+    private int overlayTextColor = Color.YELLOW;
+    private int overlayBackgroundColor = Color.WHITE;
+    private int overlayBackgroundAlpha = 64;
+    private float overlayScale = 1.5f;
+    private float overlayFontSize = 48f;
     
     public static final int SIZE_CENTER = 1;
     public static final int SIZE_BEST_FIT = 4;
     public static final int SIZE_FULLSCREEN = 8;
 
-    private int width = -1;
-    private int height = -1;
+    private int width;
+    private int height;
     private int displayMode = SIZE_CENTER;
     
     
 
 	private boolean suspending = false;
+	
+	public class FPSThread extends Thread {
+        int frameCounter = 0;
+        long start;
+        float fps = 0f;
+        final int PERIOD = 1000; //1 second
+        boolean running = false;
+        Bitmap overlay;
+        Paint p = new Paint();
+        
+        public void run(){
+        	if(!showFps) return;
+        	p.setTextSize(overlayFontSize);
+        	running = true;
+        	try{
+	        	while(true){
+	        		int currentFrames = frameCounter;
+	        		start = System.currentTimeMillis();
+	        		Thread.sleep(PERIOD);
+	        		fps = 1000f* (float)(frameCounter - currentFrames)/(System.currentTimeMillis()-start);
+	        		overlay = makeFpsOverlay(); //this way, it only draws the frame on measure
+	        	}
+        	}catch(Exception e){
+        		running = false;
+        		return;
+        	}
+        }
+        
+        public void incrementFrame(){
+        	if(!running) this.start();
+        	frameCounter++;
+        }
+        public Bitmap getFps(){
+        	return overlay;
+        }
+        
+        private Bitmap makeFpsOverlay() {
+            Rect b = new Rect();
+            String fpsString = String.format("%.1f", fps);
+            p.getTextBounds(fpsString, 0, fpsString.length(), b);
+            Bitmap bm = Bitmap.createBitmap(b.width(), b.height(), Bitmap.Config.ARGB_8888);
+            if(bm ==null) return null;
+
+            Canvas c = new Canvas(bm);
+            p.setColor(overlayBackgroundColor);
+            p.setAlpha(overlayBackgroundAlpha);
+            c.drawRect(0, 0, b.width(), b.height(), p);
+            p.setColor(overlayTextColor);
+            
+            c.drawText(fpsString, -b.left, b.bottom-b.top, p);
+            return bm;        	 
+        }
+	}
+	private FPSThread fpsThread = new FPSThread();
 
     public class MjpegViewThread extends Thread {
         private SurfaceHolder mHolder;
-//        private int frameCounter = 0;
-//        private long start;
-//        private String fps = "";
 
          
         public MjpegViewThread(SurfaceHolder surfaceHolder) { 
         	mHolder = surfaceHolder;
         }
         
-         
-//        private Bitmap makeFpsOverlay(Paint p) {
-//            Rect b = new Rect();
-//            p.getTextBounds(fps, 0, fps.length(), b);
-//
-//            // false indentation to fix forum layout             
-//            Bitmap bm = Bitmap.createBitmap(b.width(), b.height(), Bitmap.Config.ARGB_8888);
-//
-//            Canvas c = new Canvas(bm);
-//            p.setColor(overlayBackgroundColor);
-//            c.drawRect(0, 0, b.width(), b.height(), p);
-//            p.setColor(overlayTextColor);
-//            c.drawText(fps, -b.left, b.bottom-b.top-p.descent(), p);
-//            return bm;        	 
-//        }
+        
 
         public void run() {
-//            start = System.currentTimeMillis();
-//            PorterDuffXfermode mode = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
-
-//            int width;
-//            int height;
-//            Paint p = new Paint();
-//            Bitmap ovl=null;
+            PorterDuffXfermode mode = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER); //Overlay DST over SRC
+            Paint p = new Paint();
 
 	    	while(mRun){
 	    		Canvas c = null;
@@ -87,9 +120,25 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 //    	    			Bitmap bmp = BitmapFactory.decodeResource(getResources(), R.raw.a); //testing
 		    		c = mHolder.lockCanvas();
 		    		if(c==null) throw new IOException();
-		    		c.drawBitmap(bmp, null, outputRect(displayMode, bmp.getWidth(), bmp.getHeight()), null);
+		    		Rect outputRect = outputRect(displayMode, bmp.getWidth(), bmp.getHeight());
+//		    		Log.v("z", "outrect: l:"+outputRect.left+" t:"+outputRect.top+" w:"+outputRect.width()+" h:"+outputRect.height());
+		    		c.drawBitmap(bmp, null, outputRect, null);
+		    		
+		    		if(showFps) {
+		    			fpsThread.incrementFrame();
+                        p.setXfermode(mode); //overlay
+                        Bitmap ov = fpsThread.getFps();
+                        if(ov!=null){
+                        	Rect fpsRect = new Rect(outputRect.left, outputRect.top, (int)(outputRect.left + overlayScale*ov.getWidth()), (int)(outputRect.top + overlayScale*ov.getHeight()));
+//                        	Log.v("z", "fpsrect: l:"+fpsRect.left+" t:"+fpsRect.top+" w:"+fpsRect.width()+" h:"+fpsRect.height());
+                        	c.drawBitmap(ov, null, fpsRect, null);
+                        }
+                        p.setXfermode(null); //return to normal mode
+                    }
+		    		
 	    		}catch(IOException e){
 	    			mRun = false;
+	    			if(showFps) fpsThread.interrupt();
 	    		}finally{
 	    			if(c != null) mHolder.unlockCanvasAndPost(c);
 	    		}
@@ -111,8 +160,8 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 //        overlayBackgroundColor = Color.BLACK;
 //        ovlPos = MjpegView.POSITION_LOWER_RIGHT;
 //        displayMode = MjpegView.SIZE_STANDARD;
-//        dispWidth = getWidth();
-//        dispHeight = getHeight();
+        width = getWidth();
+        height = getHeight();
     }
     
     public void startPlayback() { 
@@ -198,6 +247,9 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 	public void setDisplayMode(int mode){
 		displayMode = mode;
 	}
+	public void showFps(boolean show){
+		showFps = show;
+	}
 
 	/*
 	 * The actual surface is as big as the View (based on the layout and screen size).
@@ -205,14 +257,6 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 	 * If we want to alter the area we actually use for drawing, use these methods.
 	 * By default, we use the whole surface.
 	 */
-	public int getDrawableWidth(){
-		if(width==-1) width = super.getWidth();
-		return width;
-	}
-	public int getDrawableHeight(){
-		if(height==-1) height = super.getHeight();
-		return height;
-	}
 	public void setResolution(int width, int height){
 		this.width = Math.min(width, getWidth());
 		this.height = Math.min(height, getHeight());
@@ -224,28 +268,26 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
     Rect outputRect(int displayMode, int bitmapWidth, int bitmapHeight){
         int tempx;
         int tempy;
-        int dispWidth = getDrawableWidth();
-        int dispHeight = getDrawableHeight();
         switch(displayMode){
 	          case SIZE_CENTER:
-	              tempx = (dispWidth / 2) - (bitmapWidth / 2);
-	              tempy = (dispHeight / 2) - (bitmapHeight / 2);
+	              tempx = (width / 2) - (bitmapWidth / 2);
+	              tempy = (height / 2) - (bitmapHeight / 2);
 	              return new Rect(tempx, tempy, bitmapWidth + tempx, bitmapHeight + tempy);
 
 	          case SIZE_BEST_FIT:
 	              float bmasp = (float) bitmapWidth / (float) bitmapHeight;
-	              bitmapWidth = dispWidth;
-	              bitmapHeight = (int) (dispWidth / bmasp);
-	              if (bitmapHeight > dispHeight) {
-	            	  bitmapHeight = dispHeight;
-	                  bitmapWidth = (int) (dispHeight * bmasp);
+	              bitmapWidth = width;
+	              bitmapHeight = (int) (width / bmasp);
+	              if (bitmapHeight > height) {
+	            	  bitmapHeight = height;
+	                  bitmapWidth = (int) (height * bmasp);
 	              }
-	              tempx = (dispWidth / 2) - (bitmapWidth / 2);
-	              tempy = (dispHeight / 2) - (bitmapHeight / 2);
+	              tempx = (width / 2) - (bitmapWidth / 2);
+	              tempy = (height / 2) - (bitmapHeight / 2);
 	              return new Rect(tempx, tempy, bitmapWidth + tempx, bitmapHeight + tempy);
 	
 	          case SIZE_FULLSCREEN:
-	              return new Rect(0, 0, dispWidth, dispHeight);
+	              return new Rect(0, 0, width, height);
 	          default:
 	        	  return null;
         }
