@@ -20,12 +20,14 @@ import android.content.SharedPreferences;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.TextView;
 
-public class MjpegActivity extends Activity {
+public class MjpegActivity extends Activity implements FPSTracker.FPSCallback {
 	private static final boolean DEBUG=false;
     private static final String TAG = "MJPEG";
 
-    private MjpegView mv = null;
+    MjpegView mv = null;
+    TextView fpsView;
     String URL;
     
     // for settings (network and resolution)
@@ -82,6 +84,7 @@ public class MjpegActivity extends Activity {
         if(mv != null){
         	mv.setResolution(width, height);
         }
+        fpsView = (TextView) findViewById(R.id.fps);
         
         setTitle(R.string.title_connecting);
         new DoRead().execute(URL);
@@ -185,6 +188,20 @@ public class MjpegActivity extends Activity {
     			return;
     		}
     	});
+    }
+    
+    /*
+     * Because this is called by an FPSThread (on a different thread, obviously), and we can only
+     * update the UI from the UI thread, we have to use a runnable. No biggie
+     */
+    @Override
+    public void onFPSReceive(final float fps) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                fpsView.setText(String.valueOf(fps));
+            }
+        });
     }
     
     public class DoRead extends AsyncTask<String, Void, MjpegInputStream> {
