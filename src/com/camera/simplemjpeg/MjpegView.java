@@ -1,3 +1,16 @@
+/*
+ * ******************************************** NOTICE ********************************************
+ * This package is a fork of a library by neuralassembly (https://github.com/neuralassembly).
+ * The copyright is his. The original branch: https://bitbucket.org/neuralassembly/simplemjpegview
+ *
+ * I have done some significant refactoring from this. In particular, I have removed the reliance
+ * on NDK code (which required agreeing to Intel's licence on OpenCV) and replaced it will all
+ * core image functions. My fork is here: https://github.com/TechJect/SimpleMJPEGView
+ *
+ * It's not clear what licence neuralassembly's non-OpenCV code is, but this constitutes a
+ * derived work and shares that licence.
+ * ************************************************************************************************
+ */
 package com.camera.simplemjpeg;
 
 import android.content.Context;
@@ -7,21 +20,10 @@ import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.mjpeg.FPSTracker;
+
 import java.io.IOException;
 
-/**
- * ******************************************** NOTICE ********************************************
- * This package is a fork of a library by neuralassembly (https://github.com/neuralassembly).
- * The copyright is his. The original branch: https://bitbucket.org/neuralassembly/simplemjpegview
- *
- * I have done some significant refactoring from this. In particular, I have removed the reliance
- * on NDK code (which required agreeing to Intel's licence on OpenCV) and replaced it will all
- * core image functions. My fork is here: https://github.com/TechJect/SimpleMJPEGView
- *
- * It's not clear what license neuralassembly's non-OpenCV code is, but this constitutes a
- * derived work and shares that license.
- * ************************************************************************************************
- */
 public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
 
     private SurfaceHolder holder;
@@ -45,6 +47,7 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
     private int displayMode = SIZE_CENTER;
 
     Rect outputRect = null;
+
     public class MjpegViewThread extends Thread {
         private SurfaceHolder mHolder;
 
@@ -58,8 +61,8 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
                 try{
                     mIn.readMjpegFrame();
                     c = mHolder.lockCanvas();
-//                    Rect outputRect = outputRect(displayMode, mIn.tempBmp.getWidth(), mIn.tempBmp.getHeight());
-                    if(outputRect==null) outputRect = outputRect(displayMode, mIn.tempBmp.getWidth(), mIn.tempBmp.getHeight()); //Should be the same size every time
+                    //Should be the same size every time
+                    if(outputRect==null) outputRect = outputRect(displayMode, mIn.tempBmp.getWidth(), mIn.tempBmp.getHeight());
                     c.drawBitmap(mIn.tempBmp, null, outputRect, null);
                 }catch(Exception e){
                     mRun = false;
@@ -67,17 +70,31 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
                 }finally{
                     if(c != null) mHolder.unlockCanvasAndPost(c);
                 }
-                if(fpsThread!=null) fpsThread.calculateAndSend();
+                if(fpsThread!=null) fpsThread.incrementFrame();
             }
         }
     }
+
+
+    public MjpegView(Context context) {
+        super(context);
+        init();
+    }
+    public MjpegView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+    public MjpegView(Context context, AttributeSet attrs, int defStyle){
+        super(context, attrs, defStyle);
+        init();
+    }
+
 
     public void setFpsCallback(FPSTracker.FPSCallback callback){
         fpsThread = new FPSTracker(callback);
     }
 
     private void init() {
-
         holder = getHolder();
         holder.addCallback(this);
         thread = new MjpegViewThread(holder);
@@ -129,7 +146,6 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
             }catch(IOException e){e.printStackTrace();}
             mIn = null;
         }
-
     }
 
     public void surfaceChanged(SurfaceHolder holder, int f, int w, int h) {
@@ -141,14 +157,6 @@ public class MjpegView extends SurfaceView implements SurfaceHolder.Callback {
         stopPlayback();
     }
 
-    public MjpegView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
-    }
-    public MjpegView(Context context) {
-        super(context);
-        init();
-    }
     public void surfaceCreated(SurfaceHolder holder) {
         surfaceDone = true;
     }
